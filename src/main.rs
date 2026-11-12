@@ -1,23 +1,15 @@
-// Система парковки. Консольная программа на Rust, весь код в одном файле.
-
 use std::io::{self, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-// ---------- Структуры ----------
-
 struct User { id: u32, name: String, balance: f64 }
 struct Car { plate: String, owner_id: u32 }
-// Парковочное место. Если plate пустой, то место свободно
 struct Spot { plate: String, start: u64 }
 struct Parking { name: String, price: f64, spots: Vec<Spot> }
-// Система управления: хранит всё вместе
 struct ParkingSystem {
-    parking: Option<Parking>, // None, пока парковка не создана
+    parking: Option<Parking>,
     users: Vec<User>,
     cars: Vec<Car>,
 }
-
-// ---------- Ввод с консоли ----------
 
 fn input(text: &str) -> String {
     print!("{}", text);
@@ -27,24 +19,19 @@ fn input(text: &str) -> String {
     s.trim().to_string()
 }
 
-// Читаем число. Если ввели не число, получится 0 (дальше это проверяется)
 fn number(text: &str) -> f64 {
     input(text).replace(",", ".").parse().unwrap_or(0.0)
 }
 
-// Номер машины: без пробелов и большими буквами
 fn fix_plate(s: &str) -> String {
     s.replace(" ", "").to_uppercase()
 }
-
-// ---------- Методы системы. Каждый возвращает текст для вывода ----------
 
 impl ParkingSystem {
     fn now(&self) -> u64 {
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
     }
 
-    // 1. Создание парковки
     fn create_parking(&mut self, name: String, count: u32, price: f64) -> String {
         if self.parking.is_some() {
             return "Парковка уже создана".to_string();
@@ -98,7 +85,6 @@ impl ParkingSystem {
         format!("Новый баланс: {:.2}", user.balance)
     }
 
-    // 2. Парковка машины
     fn park_car(&mut self, plate: &str) -> String {
         let plate = fix_plate(plate);
         let now = self.now();
@@ -121,7 +107,6 @@ impl ParkingSystem {
                 return "Машина уже на парковке".to_string();
             }
         }
-        // ищем первое свободное место
         for (i, spot) in parking.spots.iter_mut().enumerate() {
             if spot.plate.is_empty() {
                 spot.plate = plate;
@@ -132,7 +117,6 @@ impl ParkingSystem {
         "Свободных мест нет".to_string()
     }
 
-    // 3. Выезд и оплата с учётом времени
     fn leave_and_pay(&mut self, plate: &str) -> String {
         let plate = fix_plate(plate);
         let now = self.now();
@@ -142,11 +126,9 @@ impl ParkingSystem {
         };
         for spot in parking.spots.iter_mut() {
             if spot.plate == plate {
-                // минуты (неполная минута считается за целую, минимум 1)
                 let minutes = ((now - spot.start + 59) / 60).max(1);
                 let cost = minutes as f64 * parking.price / 60.0;
 
-                // находим владельца машины
                 let mut owner = 0;
                 for car in &self.cars {
                     if car.plate == plate {
@@ -158,7 +140,7 @@ impl ParkingSystem {
                     return format!("Не хватает денег: нужно {:.2}, на балансе {:.2}", cost, user.balance);
                 }
                 user.balance -= cost;
-                spot.plate = String::new(); // место освободилось
+                spot.plate = String::new();
                 return format!(
                     "Чек: время {} мин, к оплате {:.2}, остаток {:.2}",
                     minutes, cost, user.balance
@@ -196,8 +178,6 @@ impl ParkingSystem {
         }
     }
 }
-
-// ---------- Главная функция ----------
 
 fn main() {
     let mut s = ParkingSystem { parking: None, users: Vec::new(), cars: Vec::new() };
